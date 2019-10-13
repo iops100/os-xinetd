@@ -1,0 +1,59 @@
+#!/bin/sh
+#
+# $FreeBSD$
+#
+#
+# PROVIDE: xinetd
+# REQUIRE: DAEMON
+# BEFORE: LOGIN
+#
+# This rc script understands the following variables
+# which are read from /etc/rc.conf:
+#
+# xinetd_enable  (bool): Set to "NO" by default.
+#                         Set it to "YES" to enable Xinetd.
+# xinetd_config   (str): Xinetd's configuration file. Default is:
+#                         /usr/local/etc/xinetd.conf.
+# xinetd_flags    (str): List of additional Xinetd options you want
+#                         to use. None set by default.
+# xinetd_pidfile  (str): Default is /var/run/xinetd.pid.
+# xinetd_user     (str): Xinetd Daemon user. Default is xinetd.
+#
+# Usage:
+# /usr/local/etc/rc.d/xinetd [fast|force|one](start|stop|restart|rcvar|status|poll)
+
+. /etc/rc.subr
+
+name="xinetd"
+rcvar=xinetd_enable
+load_rc_config ${name}
+
+: ${xinetd_enable="NO"}
+: ${xinetd_config="/usr/local/etc/xinetd.conf"}
+: ${xinetd_logdir="/var/log"}
+: ${xinetd_user="root"}
+: ${xinetd_piddir="/var/run"}
+: ${xinetd_pidfile="${xinetd_piddir}/xinetd.pid"}
+
+xinetd_prestart () {
+    if [ ! -e "${xinetd_config}" ]; then
+        echo "config file not found. Copying the example file to ${xinetd_config}."
+    fi
+    if [ ! -e "${xinetd_logdir}" ]; then
+        echo "${xinetd_logdir} not found. Creating ..."
+        mkdir "${xinetd_logdir}"
+        chown "${xinetd_user}:${xinetd_user}" "${xinetd_logdir}"
+        chmod 0750 "${xinetd_logdir}"
+    fi
+    if [ ! -d "${xinetd_piddir}" ]; then
+        mkdir -p "${xinetd_piddir}"
+        chown "${xinetd_user}:${xinetd_user}" "${xinetd_piddir}"
+    fi
+}
+
+start_precmd="xinetd_prestart"
+
+command="/usr/local/sbin/xinetd"
+command_args="${xinetd_flags} -pidfile ${xinetd_pidfile} -f ${xinetd_config} -filelog ${xinetd_logdir}/xinetd.log"
+
+run_rc_command "$1"
